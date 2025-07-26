@@ -37,7 +37,7 @@ int main() {
 	glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
 	
 	// Load shaders
-  	GLuint shader_program = create_shader_program(2, "source/shaders/vert.vert", "source/shaders/frag.frag");
+  	GLuint shader_program = create_shader_program(2, "shaders/vert.vert", "shaders/frag.frag");
 
 	// Send texture image to shader program as uniform
 	unsigned int texture = send_uniform_texture("textures/hyrax.jpg", shader_program, "tex");
