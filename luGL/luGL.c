@@ -31,7 +31,7 @@ GLFWwindow *lu_create_window(const char *window_title, int width, int height, bo
   return window;
 }
 
-char *lu_read_file(const char *file_name, size_t *file_len) {
+static char *lu_read_file(const char *file_name, size_t *file_len) {
   FILE *ptr = fopen(file_name, "rb"); // Open the file for reading
   if (ptr == NULL) {
     fprintf(stderr, "(lu_read_file): Could not open file %s, returning NULL.\n", file_name);
@@ -62,7 +62,7 @@ char *lu_read_file(const char *file_name, size_t *file_len) {
   return out;
 }
 
-GLuint lu_compile_shader(const char *shader_file_location) {
+static GLuint lu_compile_shader(const char *shader_file_location) {
   // Detect the shader type based on file extension
   size_t name_len = strlen(shader_file_location);
   const char *ext = shader_file_location + name_len - 5;
