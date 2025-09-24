@@ -3,6 +3,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stolen/stb_image.h"
 
+#include <stdlib.h>
+
 GLFWwindow *lu_create_window(const char *window_title, int width, int height, bool fullscreen) {
   // Initialise GLFW
   if (glfwInit() != GLFW_TRUE) {
@@ -109,7 +111,7 @@ static GLuint lu_compile_shader(const char *shader_file_location) {
   return shader;
 }
 
-GLuint lu_create_shader_program(int num_shaders, ...) {
+GLuint lu_create_shader_program(size_t num_shaders, ...) {
   va_list args;
   va_start(args, num_shaders);
 
@@ -160,7 +162,7 @@ GLuint lu_create_shader_program(int num_shaders, ...) {
   return shader_program;
 }
 
-void lu_define_layout(GLuint *VAO, GLuint *VBO, int num_components, int *component_sizes, int *component_counts, GLenum *component_types) {
+void lu_define_layout(GLuint *VAO, GLuint *VBO, size_t num_components, size_t *component_sizes, size_t *component_counts, GLenum *component_types) {
   // Clear whatever might exist in the VAO and VBO
   glDeleteVertexArrays(1, VBO);
   glGenBuffers(1, VBO);
@@ -219,4 +221,80 @@ unsigned int lu_send_uniform_texture(char *texture_location, GLuint shader_progr
   glBindTexture(GL_TEXTURE_2D, 0);
 
   return texture;
+}
+
+lu_Mesh lu_mesh_create(size_t num_components, size_t *component_sizes, size_t *component_counts, GLenum *component_types) {
+  lu_Mesh mesh = {0};
+  mesh.data = NULL;
+  mesh.bytes_alloced = 0;
+  mesh.bytes_added = 0;
+  mesh.stride = 0;
+  for (int i = 0; i < num_components; i++) {
+    mesh.stride += component_sizes[i] * component_counts[i];
+  }
+
+  lu_define_layout(&mesh.VAO, &mesh.VBO, num_components, component_sizes, component_counts, component_types);
+  return mesh;
+}
+
+void lu_mesh_add_bytes(lu_Mesh *mesh, void *src, size_t n_bytes) {
+  if (n_bytes == 0) return;
+  if (!src) return;
+  if (!mesh) return;
+
+  if (!mesh->data) {
+    mesh->bytes_alloced = 64;
+    mesh->data = malloc(sizeof(uint8_t) * mesh->bytes_alloced);
+    mesh->bytes_added = 0;
+  }
+
+  if (mesh->bytes_added + n_bytes > mesh->bytes_alloced) {
+    while (mesh->bytes_added + n_bytes > mesh->bytes_alloced) {
+      mesh->bytes_alloced *= 2;
+    }
+    mesh->data = realloc(mesh->data, mesh->bytes_alloced * sizeof(uint8_t));
+  }
+
+  memcpy(mesh->data + mesh->bytes_added, src, n_bytes);
+  mesh->bytes_added += n_bytes;
+}
+
+void lu_mesh_free(lu_Mesh *mesh) {
+  if (!mesh) return;
+  if (mesh->data) free(mesh->data);
+  mesh->data = NULL;
+  mesh->bytes_alloced = 0;
+  // dont reset mesh->bytes_added, lu_mesh_add_bytes will do that for us
+}
+
+void lu_mesh_delete(lu_Mesh *mesh) {
+  if (!mesh) return;
+  lu_mesh_free(mesh);
+  glDeleteVertexArrays(1, &(mesh->VAO));
+  glDeleteBuffers(1, &(mesh->VBO));
+}
+
+static void lu_mesh_bind(lu_Mesh *mesh) {
+  glBindVertexArray(mesh->VAO);
+  if (!mesh) return;
+  glBindBuffer(GL_ARRAY_BUFFER, mesh->VBO);
+}
+
+static void lu_mesh_unbind() {
+  glBindVertexArray(0);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void lu_mesh_send(lu_Mesh *mesh) {
+  if (!mesh) return;
+  if (!mesh->data) return;
+  lu_mesh_bind(mesh);
+  glBufferData(GL_ARRAY_BUFFER, mesh->bytes_added, mesh->data, GL_STATIC_DRAW);
+  lu_mesh_unbind();
+}
+
+void lu_mesh_render(lu_Mesh *mesh, GLenum render_mode) {
+  lu_mesh_bind(mesh);
+  glDrawArrays(render_mode, 0, mesh->bytes_added / mesh->stride);
+  lu_mesh_unbind();
 }
