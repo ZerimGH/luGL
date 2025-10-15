@@ -4,3 +4,5 @@ Dependencies:
   -GLFW
   -GLEW
   -OpenGL
+
+No longer working on this version, I have a new improved version at https://github.com/ZerimGH/nuGL2
